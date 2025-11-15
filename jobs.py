@@ -1,5 +1,5 @@
 from telegram.ext import ContextTypes
-from telegram.error import RetryAfter
+from telegram.error import RetryAfter, BadRequest
 import models
 import asyncio
 from sqlalchemy.orm import Session
@@ -16,6 +16,11 @@ async def currency_listing_countdown_poster_and_updater(
             except RetryAfter as r:
                 await asyncio.sleep(r.retry_after)
                 await post_or_update(context, post.id, s)
+            except BadRequest as b:
+                if "Message to edit not found" in str(b):
+                    post.is_posted = False
+                    post.post_message_id = None
+                    s.commit()
             except Exception as e:
                 pass
 

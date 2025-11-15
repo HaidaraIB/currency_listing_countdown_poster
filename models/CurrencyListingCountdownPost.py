@@ -16,15 +16,24 @@ class CurrencyListingCountdownPost(Base):
 
     def __str__(self):
         return (
-            f"Launch Time: <b>{self.name}</b>\n\n" f"<b>{self.get_time_remaining()}</b>"
+            f"═══════════════════\n"
+            f"LAUNCH  COUNTDOWN - ({self.name})\n"
+            f"═══════════════════\n\n"
+            f"<u>Time Remaining:</u>\n"
+            f"{self.get_time_remaining()}\n\n"
+            f"<u>Protection:</u>\n"
+            f"<b>Anti Rug Pull</b> Active\n\n"
+            f"<u>⚡️Launch Date:</u>\n"
+            f"<b>{self.listing_date.strftime('%d/%m/%Y')}</b>\n"
+            f"═══════════════════\n"
         )
 
     def get_time_remaining(self) -> str:
         total_seconds = int((self.listing_date - datetime.now()).total_seconds())
         if total_seconds < 0:
-            return "تم الإطلاق"
+            return "<b>تم الإطلاق</b>"
         days = total_seconds // (24 * 3600)
         hours = (total_seconds % (24 * 3600)) // 3600
         minutes = (total_seconds % 3600) // 60
         seconds = total_seconds % 60
-        return f"{days:02}:{hours:02}:{minutes:02}:{seconds:02}"
+        return f"{days} <b>Days</b> | {hours:02}:{minutes:02}:{seconds:02}"
