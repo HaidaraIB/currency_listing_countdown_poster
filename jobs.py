@@ -2,6 +2,7 @@ from telegram.ext import ContextTypes
 from telegram.error import RetryAfter
 import models
 import asyncio
+from sqlalchemy.orm import Session
 
 
 async def currency_listing_countdown_poster_and_updater(
@@ -11,28 +12,32 @@ async def currency_listing_countdown_poster_and_updater(
         posts = s.query(models.CurrencyListingCountdownPost).all()
         for post in posts:
             try:
-                await post_or_update(context, post)
+                await post_or_update(context, post.id, s)
             except RetryAfter as r:
                 await asyncio.sleep(r.retry_after)
-                await post_or_update(context, post)
+                await post_or_update(context, post.id, s)
+            except Exception as e:
+                pass
 
 
-async def post_or_update(
-    context: ContextTypes.DEFAULT_TYPE, post: models.CurrencyListingCountdownPost
-):
-    with models.session_scope() as s:
-        if not post.is_posted:
-            post_message = await context.bot.send_photo(
-                chat_id=post.group_id,
-                photo=post.logo,
-                caption=str(post),
-            )
-            post.is_posted = True
-            post.post_message_id = post_message.message_id
-            s.commit()
-        else:
-            await context.bot.edit_message_caption(
-                chat_id=post.group_id,
-                message_id=post.post_message_id,
-                caption=str(post),
-            )
+async def post_or_update(context: ContextTypes.DEFAULT_TYPE, post_id: int, s: Session):
+    post = s.get(models.CurrencyListingCountdownPost, post_id)
+    if not post.is_posted:
+        post_message = await context.bot.send_photo(
+            chat_id=post.group_id,
+            photo=post.logo,
+            caption=str(post),
+        )
+        await context.bot.pin_chat_message(
+            chat_id=post.group_id,
+            message_id=post_message.message_id,
+        )
+        post.is_posted = True
+        post.post_message_id = post_message.message_id
+        s.commit()
+    else:
+        await context.bot.edit_message_caption(
+            chat_id=post.group_id,
+            message_id=post.post_message_id,
+            caption=str(post),
+        )

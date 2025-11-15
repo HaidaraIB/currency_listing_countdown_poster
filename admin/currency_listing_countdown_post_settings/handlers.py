@@ -5,6 +5,7 @@ from telegram import (
     KeyboardButtonRequestChat,
     KeyboardButton,
     InlineKeyboardMarkup,
+    ReplyKeyboardRemove,
 )
 from telegram.ext import (
     ContextTypes,
@@ -29,6 +30,7 @@ from common.constants import *
 from start import admin_command
 import models
 from datetime import datetime
+from Config import Config
 
 NAME, LOGO, LISTING_DATE, GROUP_ID = range(4)
 
@@ -103,12 +105,12 @@ async def get_logo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 update.message.photo[-1].file_id
             )
             await update.message.reply_text(
-                text="أرسل تاريخ الإطلاق",
+                text="أرسل تاريخ الإطلاق بالصيغة <b>DD/MM/YYYY HH:MM</b>",
                 reply_markup=InlineKeyboardMarkup(back_buttons),
             )
         else:
             await update.callback_query.edit_message_text(
-                text="أرسل تاريخ الإطلاق",
+                text="أرسل تاريخ الإطلاق بالصيغة <b>DD/MM/YYYY HH:MM</b>",
                 reply_markup=InlineKeyboardMarkup(back_buttons),
             )
         return LISTING_DATE
@@ -128,14 +130,12 @@ async def get_listing_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "أو قم بإرسال ID المجموعة مباشرة\n\n"
                 "للرجوع اضغط /back"
             ),
-            reply_markup=ReplyKeyboardMarkup(
-                keyboard=ReplyKeyboardMarkup.from_button(
-                    KeyboardButton(
-                        text="اختيار مجموعة",
-                        request_chat=KeyboardButtonRequestChat(
-                            request_id=6,
-                            chat_is_channel=False,
-                        ),
+            reply_markup=ReplyKeyboardMarkup.from_button(
+                KeyboardButton(
+                    text="اختيار مجموعة",
+                    request_chat=KeyboardButtonRequestChat(
+                        request_id=6,
+                        chat_is_channel=False,
                     ),
                 ),
                 resize_keyboard=True,
@@ -167,19 +167,28 @@ async def get_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         with models.session_scope() as s:
+            logo_message = await context.bot.send_photo(
+                chat_id=Config.LOGOS_CHANNEL,
+                photo=context.user_data["currency_listing_countdown_post_logo"],
+            )
             currency_listing_countdown_post = models.CurrencyListingCountdownPost(
                 name=context.user_data["currency_listing_countdown_post_name"],
-                logo=context.user_data["currency_listing_countdown_post_logo"],
+                logo=logo_message.photo[-1].file_id,
                 listing_date=datetime.strptime(
                     context.user_data["currency_listing_countdown_post_listing_date"],
-                    "%d/%m/%Y",
+                    "%d/%m/%Y %H:%M",
                 ),
                 group_id=group_id,
             )
             s.add(currency_listing_countdown_post)
             s.commit()
         await update.message.reply_text(
-            text=("تمت إضافة المنشور بنجاح ✅\n\n" "للمتابعة اضغط /admin")
+            text="تمت إضافة المنشور بنجاح ✅",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        await update.message.reply_text(
+            text=HOME_PAGE_TEXT,
+            reply_markup=build_admin_keyboard(),
         )
         return ConversationHandler.END
 
@@ -206,7 +215,7 @@ add_currency_listing_countdown_post_handler = ConversationHandler(
         ],
         LISTING_DATE: [
             MessageHandler(
-                filters=filters.Regex(r"^\d{2}/\d{2}/\d{4}$"),
+                filters=filters.Regex(r"^\d{2}/\d{2}/\d{4} \d{2}:\d{2}$"),
                 callback=get_listing_date,
             )
         ],

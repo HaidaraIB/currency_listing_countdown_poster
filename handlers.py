@@ -59,6 +59,10 @@ def setup_and_run():
     app.job_queue.run_repeating(
         currency_listing_countdown_poster_and_updater,
         interval=60,
+        job_kwargs={
+            "id": "currency_listing_countdown_poster_and_updater",
+            "replace_existing": True,
+        },
     )
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)

@@ -11,6 +11,7 @@ class Config:
     SESSION = os.getenv("SESSION")
     OWNER_ID = int(os.getenv("OWNER_ID"))
     ERRORS_CHANNEL = int(os.getenv("ERRORS_CHANNEL"))
+    LOGOS_CHANNEL = int(os.getenv("LOGOS_CHANNEL"))
     FORCE_JOIN_CHANNEL_ID = int(os.getenv("FORCE_JOIN_CHANNEL_ID"))
     FORCE_JOIN_CHANNEL_LINK = os.getenv("FORCE_JOIN_CHANNEL_LINK")
 

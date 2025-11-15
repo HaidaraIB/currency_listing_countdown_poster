@@ -32,7 +32,9 @@ def init_db():
     Base.metadata.create_all(engine)
 
 
-Session = scoped_session(sessionmaker(bind=engine, autocommit=False, autoflush=False))
+Session = scoped_session(
+    sessionmaker(bind=engine, autocommit=False, autoflush=False, expire_on_commit=False)
+)
 
 
 @contextmanager
