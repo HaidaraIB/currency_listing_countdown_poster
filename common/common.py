@@ -2,7 +2,6 @@ from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes
 from common.keyboards import build_request_buttons
 import os
-import models
 import uuid
 
 

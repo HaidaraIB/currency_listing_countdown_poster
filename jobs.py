@@ -1,0 +1,38 @@
+from telegram.ext import ContextTypes
+from telegram.error import RetryAfter
+import models
+import asyncio
+
+
+async def currency_listing_countdown_poster_and_updater(
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    with models.session_scope() as s:
+        posts = s.query(models.CurrencyListingCountdownPost).all()
+        for post in posts:
+            try:
+                await post_or_update(context, post)
+            except RetryAfter as r:
+                await asyncio.sleep(r.retry_after)
+                await post_or_update(context, post)
+
+
+async def post_or_update(
+    context: ContextTypes.DEFAULT_TYPE, post: models.CurrencyListingCountdownPost
+):
+    with models.session_scope() as s:
+        if not post.is_posted:
+            post_message = await context.bot.send_photo(
+                chat_id=post.group_id,
+                photo=post.logo,
+                caption=str(post),
+            )
+            post.is_posted = True
+            post.post_message_id = post_message.message_id
+            s.commit()
+        else:
+            await context.bot.edit_message_caption(
+                chat_id=post.group_id,
+                message_id=post.post_message_id,
+                caption=str(post),
+            )

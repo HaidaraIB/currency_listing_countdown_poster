@@ -30,6 +30,12 @@ def build_admin_keyboard():
         ],
         [
             InlineKeyboardButton(
+                text="إعدادات إعلان التداول 📊",
+                callback_data="currency_listing_countdown_post_settings",
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 text="حظر/فك حظر 🔓🔒",
                 callback_data="ban_unban",
             )

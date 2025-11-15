@@ -15,9 +15,10 @@ from admin.admin_calls import *
 from admin.admin_settings import *
 from admin.broadcast import *
 from admin.ban import *
+from admin.currency_listing_countdown_post_settings import *
 
 from models import init_db
-
+from jobs import currency_listing_countdown_poster_and_updater
 from MyApp import MyApp
 
 
@@ -27,6 +28,9 @@ def setup_and_run():
 
     app = MyApp.build_app()
 
+    app.add_handler(add_currency_listing_countdown_post_handler)
+    app.add_handler(delete_currency_listing_countdown_post_handler)
+    app.add_handler(currency_listing_countdown_post_settings_handler)
 
     app.add_handler(user_settings_handler)
     app.add_handler(change_lang_handler)
@@ -51,5 +55,10 @@ def setup_and_run():
     app.add_handler(back_to_admin_home_page_handler)
 
     app.add_error_handler(error_handler)
+
+    app.job_queue.run_repeating(
+        currency_listing_countdown_poster_and_updater,
+        interval=60,
+    )
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)

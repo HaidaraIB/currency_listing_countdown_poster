@@ -95,11 +95,8 @@ add_admin_handler = ConversationHandler(
     states={
         NEW_ADMIN_ID: [
             MessageHandler(
-                filters=filters.Regex("^\d+$"),
-                callback=new_admin_id,
-            ),
-            MessageHandler(
-                filters=filters.StatusUpdate.USERS_SHARED,
+                filters=filters.Regex(r"^-?[0-9]+$")
+                | filters.StatusUpdate.USERS_SHARED,
                 callback=new_admin_id,
             ),
         ]

@@ -11,44 +11,81 @@ from telegram.ext import (
     ConversationHandler,
     CallbackQueryHandler,
     MessageHandler,
-    filters,
     CommandHandler,
+    filters,
+)
+from admin.currency_listing_countdown_post_settings.keyboards import (
+    build_currency_listing_countdown_post_settings_keyboard,
 )
 from custom_filters import Admin
-from common.keyboards import build_back_button, build_back_to_home_page_button
+from common.keyboards import (
+    build_back_button,
+    build_back_to_home_page_button,
+    build_keyboard,
+    build_admin_keyboard,
+)
 from common.back_to_home_page import back_to_admin_home_page_handler
+from common.constants import *
 from start import admin_command
 import models
-
+from datetime import datetime
 
 NAME, LOGO, LISTING_DATE, GROUP_ID = range(4)
+
+
+async def currency_listing_countdown_post_settings(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    if update.effective_chat.type == Chat.PRIVATE and Admin().filter(update):
+        keyboard = build_currency_listing_countdown_post_settings_keyboard()
+        keyboard.append(build_back_to_home_page_button()[0])
+        await update.callback_query.edit_message_text(
+            text="إعدادات إعلان التداول 📊",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+        return ConversationHandler.END
+
+
+currency_listing_countdown_post_settings_handler = CallbackQueryHandler(
+    currency_listing_countdown_post_settings,
+    r"^currency_listing_countdown_post_settings$|^back_to_currency_listing_countdown_post_settings$",
+)
 
 
 async def add_currency_listing_countdown_post(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     if update.effective_chat.type == Chat.PRIVATE and Admin().filter(update):
+        back_buttons = [
+            build_back_button("back_to_currency_listing_countdown_post_settings"),
+            build_back_to_home_page_button()[0],
+        ]
         await update.callback_query.edit_message_text(
             text="أرسل اسم العملة",
-            reply_markup=InlineKeyboardMarkup(build_back_to_home_page_button()),
+            reply_markup=InlineKeyboardMarkup(back_buttons),
         )
         return NAME
 
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == Chat.PRIVATE and Admin().filter(update):
-        if update.message:
-            context.user_data["currency_listing_countdown_post_name"] = (
-                update.message.text
-            )
         back_buttons = [
             build_back_button("back_to_get_name"),
             build_back_to_home_page_button()[0],
         ]
-        await update.message.reply_text(
-            text="أرسل لوغو العملة",
-            reply_markup=InlineKeyboardMarkup(back_buttons),
-        )
+        if update.message:
+            context.user_data["currency_listing_countdown_post_name"] = (
+                update.message.text
+            )
+            await update.message.reply_text(
+                text="أرسل لوغو العملة",
+                reply_markup=InlineKeyboardMarkup(back_buttons),
+            )
+        else:
+            await update.callback_query.edit_message_text(
+                text="أرسل لوغو العملة",
+                reply_markup=InlineKeyboardMarkup(back_buttons),
+            )
         return LOGO
 
 
@@ -57,18 +94,23 @@ back_to_get_name = add_currency_listing_countdown_post
 
 async def get_logo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == Chat.PRIVATE and Admin().filter(update):
-        if update.message.photo:
-            context.user_data["currency_listing_countdown_post_logo"] = (
-                update.message.photo[-1].file_id
-            )
         back_buttons = [
             build_back_button("back_to_get_logo"),
             build_back_to_home_page_button()[0],
         ]
-        await update.message.reply_text(
-            text="أرسل تاريخ الإطلاق",
-            reply_markup=InlineKeyboardMarkup(back_buttons),
-        )
+        if update.message.photo:
+            context.user_data["currency_listing_countdown_post_logo"] = (
+                update.message.photo[-1].file_id
+            )
+            await update.message.reply_text(
+                text="أرسل تاريخ الإطلاق",
+                reply_markup=InlineKeyboardMarkup(back_buttons),
+            )
+        else:
+            await update.callback_query.edit_message_text(
+                text="أرسل تاريخ الإطلاق",
+                reply_markup=InlineKeyboardMarkup(back_buttons),
+            )
         return LISTING_DATE
 
 
@@ -77,10 +119,9 @@ back_to_get_logo = get_name
 
 async def get_listing_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == Chat.PRIVATE and Admin().filter(update):
-        if update.message:
-            context.user_data["currency_listing_countdown_post_listing_date"] = (
-                update.message.text
-            )
+        context.user_data["currency_listing_countdown_post_listing_date"] = (
+            update.message.text
+        )
         await update.message.reply_text(
             text=(
                 "اختر المجموعة التي سيتم إرسال المنشور فيها بالضغط على الزر أدناه\n\n"
@@ -115,12 +156,12 @@ async def get_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             chat = await context.bot.get_chat(group_id)
             bot_member = await chat.get_member(context.bot.id)
-            if not (bot_member.status in ["administrator", "creator"]):
+            if bot_member.status not in ["administrator", "creator"]:
                 await update.message.reply_text(
                     "يجب أن يكون البوت مشرفًا في المجموعة المحددة. يرجى تعيين البوت كمسؤول ثم إعادة المحاولة."
                 )
                 return
-        except Exception:
+        except:
             await update.message.reply_text(
                 "تعذر التحقق من حالة البوت أو المجموعة. تأكد من أن البوت متواجد في المجموعة وأن الرقم صحيح."
             )
@@ -129,14 +170,15 @@ async def get_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
             currency_listing_countdown_post = models.CurrencyListingCountdownPost(
                 name=context.user_data["currency_listing_countdown_post_name"],
                 logo=context.user_data["currency_listing_countdown_post_logo"],
-                listing_date=context.user_data[
-                    "currency_listing_countdown_post_listing_date"
-                ],
+                listing_date=datetime.strptime(
+                    context.user_data["currency_listing_countdown_post_listing_date"],
+                    "%d/%m/%Y",
+                ),
                 group_id=group_id,
             )
             s.add(currency_listing_countdown_post)
             s.commit()
-        await update.callback_query.edit_message_text(
+        await update.message.reply_text(
             text=("تمت إضافة المنشور بنجاح ✅\n\n" "للمتابعة اضغط /admin")
         )
         return ConversationHandler.END
@@ -146,7 +188,7 @@ add_currency_listing_countdown_post_handler = ConversationHandler(
     entry_points=[
         CallbackQueryHandler(
             add_currency_listing_countdown_post,
-            pattern="add_currency_listing_countdown_post",
+            r"^add_currency_listing_countdown_post$",
         )
     ],
     states={
@@ -178,6 +220,7 @@ add_currency_listing_countdown_post_handler = ConversationHandler(
     fallbacks=[
         admin_command,
         back_to_admin_home_page_handler,
+        currency_listing_countdown_post_settings_handler,
         CommandHandler(
             "back",
             back_to_get_listing_date,
@@ -190,5 +233,81 @@ add_currency_listing_countdown_post_handler = ConversationHandler(
             back_to_get_logo,
             r"^back_to_get_logo$",
         ),
+    ],
+)
+
+
+POST_TO_DELETE = range(1)
+
+
+async def delete_currency_listing_countdown_post(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    if update.effective_chat.type == Chat.PRIVATE and Admin().filter(update):
+        with models.session_scope() as s:
+            posts = s.query(models.CurrencyListingCountdownPost).all()
+            keyboard = build_keyboard(
+                columns=1,
+                texts=[post.name for post in posts],
+                buttons_data=[post.id for post in posts],
+            )
+            keyboard.append(
+                build_back_button("back_to_currency_listing_countdown_post_settings")
+            )
+            keyboard.append(build_back_to_home_page_button()[0])
+            await update.callback_query.edit_message_text(
+                text=(
+                    "اختر المنشور الذي تريد حذفه\n\n"
+                    "<i><b>تنبيه</b></i>: سيتم حذف المنشور من المجموعة أيضاً"
+                ),
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+            return POST_TO_DELETE
+
+
+async def choose_post_to_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type == Chat.PRIVATE and Admin().filter(update):
+        post_id = int(update.callback_query.data)
+        with models.session_scope() as s:
+            post = s.get(models.CurrencyListingCountdownPost, post_id)
+            try:
+                await context.bot.delete_message(
+                    chat_id=post.group_id,
+                    message_id=post.post_message_id,
+                )
+            except:
+                pass
+            s.delete(post)
+            s.commit()
+        await update.callback_query.answer(
+            text="تم حذف المنشور بنجاح ✅",
+            show_alert=True,
+        )
+        await update.callback_query.edit_message_text(
+            text=HOME_PAGE_TEXT,
+            reply_markup=build_admin_keyboard(),
+        )
+        return ConversationHandler.END
+
+
+delete_currency_listing_countdown_post_handler = ConversationHandler(
+    entry_points=[
+        CallbackQueryHandler(
+            delete_currency_listing_countdown_post,
+            r"^delete_currency_listing_countdown_post$",
+        )
+    ],
+    states={
+        POST_TO_DELETE: [
+            CallbackQueryHandler(
+                choose_post_to_delete,
+                r"^[0-9]+$",
+            )
+        ]
+    },
+    fallbacks=[
+        admin_command,
+        back_to_admin_home_page_handler,
+        currency_listing_countdown_post_settings_handler,
     ],
 )
