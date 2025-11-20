@@ -12,6 +12,7 @@ class CurrencyListingCountdownPost(Base):
     listing_date = sa.Column(sa.DateTime)
     group_id = sa.Column(sa.Integer)
     is_posted = sa.Column(sa.Boolean, default=False)
+    is_pinned = sa.Column(sa.Boolean, default=False)
     post_message_id = sa.Column(sa.Integer, nullable=True, default=None)
 
     def __str__(self):
