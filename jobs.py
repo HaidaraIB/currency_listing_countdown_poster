@@ -1,5 +1,5 @@
 from telegram.ext import ContextTypes
-from telegram.error import RetryAfter, ChatMigrated
+from telegram.error import RetryAfter, ChatMigrated, BadRequest
 import models
 import asyncio
 from sqlalchemy.orm import Session
@@ -30,10 +30,14 @@ async def currency_listing_countdown_poster_and_updater(
 async def post_or_update(context: ContextTypes.DEFAULT_TYPE, post_id: int, s: Session):
     post = s.get(models.CurrencyListingCountdownPost, post_id)
     if post.is_posted:
-        await context.bot.delete_message(
-            chat_id=post.group_id,
-            message_id=post.post_message_id,
-        )
+        try:
+            await context.bot.delete_message(
+                chat_id=post.group_id,
+                message_id=post.post_message_id,
+            )
+        except BadRequest as b:
+            if "Message can't be deleted" in str(b):
+                pass
     post_message = await context.bot.send_photo(
         chat_id=post.group_id,
         photo=post.logo,
