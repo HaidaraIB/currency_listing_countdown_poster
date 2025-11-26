@@ -47,3 +47,22 @@ async def post_or_update(context: ContextTypes.DEFAULT_TYPE, post_id: int, s: Se
         post.is_posted = True
     post.post_message_id = post_message.message_id
     s.commit()
+
+
+async def post_scheduling_poster(
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    post_id = context.job.data["post_id"]
+    with models.session_scope() as s:
+        post = s.get(models.SchedulingPost, post_id)
+        if post.photo:
+            await context.bot.send_photo(
+                chat_id=post.group_id,
+                photo=post.photo,
+                caption=post.text,
+            )
+        else:
+            await context.bot.send_message(
+                chat_id=post.group_id,
+                text=post.text,
+            )

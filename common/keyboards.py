@@ -36,6 +36,12 @@ def build_admin_keyboard():
         ],
         [
             InlineKeyboardButton(
+                text="إعدادات المنشورات المجدولة 🔔",
+                callback_data="post_scheduling_settings",
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 text="حظر/فك حظر 🔓🔒",
                 callback_data="ban_unban",
             )

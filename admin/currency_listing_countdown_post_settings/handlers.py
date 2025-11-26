@@ -255,6 +255,12 @@ async def delete_currency_listing_countdown_post(
     if update.effective_chat.type == Chat.PRIVATE and Admin().filter(update):
         with models.session_scope() as s:
             posts = s.query(models.CurrencyListingCountdownPost).all()
+            if not posts:
+                await update.callback_query.answer(
+                    text="لا يوجد منشورات",
+                    show_alert=True,
+                )
+                return ConversationHandler.END
             keyboard = build_keyboard(
                 columns=1,
                 texts=[post.name for post in posts],

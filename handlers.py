@@ -16,6 +16,7 @@ from admin.admin_settings import *
 from admin.broadcast import *
 from admin.ban import *
 from admin.currency_listing_countdown_post_settings import *
+from admin.post_scheduling import *
 
 from models import init_db
 from jobs import currency_listing_countdown_poster_and_updater
@@ -27,6 +28,11 @@ def setup_and_run():
     init_db()
 
     app = MyApp.build_app()
+
+    app.add_handler(edit_post_scheduling_handler)
+    app.add_handler(add_post_scheduling_handler)
+    app.add_handler(delete_post_scheduling_handler)
+    app.add_handler(post_scheduling_settings_handler)
 
     app.add_handler(add_currency_listing_countdown_post_handler)
     app.add_handler(delete_currency_listing_countdown_post_handler)
