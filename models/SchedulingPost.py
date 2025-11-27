@@ -10,7 +10,7 @@ class SchedulingPost(Base):
     id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
     text = sa.Column(sa.String)
     photo = sa.Column(sa.String)
-    gif = sa.Column(sa.String)
+    doc = sa.Column(sa.String)
     interval = sa.Column(sa.Integer)
     group_id = sa.Column(sa.Integer)
     group_title = sa.Column(sa.String)

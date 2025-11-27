@@ -1,4 +1,4 @@
-"""add gif col to scheduling_posts table
+"""add doc col to scheduling_posts table
 
 Revision ID: 26f52ebeac44
 Revises: 556900191b72
@@ -23,7 +23,7 @@ def upgrade() -> None:
         with op.batch_alter_table("scheduling_posts") as batch_op:
             batch_op.add_column(
                 sa.Column(
-                    "gif",
+                    "doc",
                     sa.String,
                     nullable=True,
                     default=None,
@@ -36,6 +36,6 @@ def upgrade() -> None:
 def downgrade() -> None:
         try:
             with op.batch_alter_table("scheduling_posts") as batch_op:
-                batch_op.drop_column("gif")
+                batch_op.drop_column("doc")
         except:
             pass

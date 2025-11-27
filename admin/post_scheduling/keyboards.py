@@ -25,23 +25,23 @@ def build_edit_post_scheduling_keyboard(is_paused: bool):
     keyboard = [
         [
             InlineKeyboardButton(
-                text="تشغيل الجدولة" if is_paused else "إيقاف الجدولة",
+                text="تشغيل الجدولة 🔔" if is_paused else "إيقاف الجدولة 🔕",
                 callback_data="edit_scheduling",
             )
         ],
         [
             InlineKeyboardButton(
-                text="تعديل الرسالة",
+                text="تعديل الرسالة 📝",
                 callback_data="edit_message",
             ),
             InlineKeyboardButton(
-                text="تعديل المجموعة",
+                text="تعديل المجموعة 💬",
                 callback_data="edit_group",
             ),
         ],
         [
             InlineKeyboardButton(
-                text="تعديل الفاصل الزمني",
+                text="تعديل الفاصل الزمني 🕒",
                 callback_data="edit_interval",
             ),
         ],

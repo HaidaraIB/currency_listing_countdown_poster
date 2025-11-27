@@ -1,4 +1,4 @@
-from telegram import Animation
+
 from telegram.ext import ContextTypes
 from telegram.error import RetryAfter, ChatMigrated, BadRequest
 import models
@@ -62,10 +62,10 @@ async def post_scheduling_poster(
                 photo=post.photo,
                 caption=post.text,
             )
-        elif post.gif:
-            await context.bot.send_animation(
+        elif post.doc:
+            await context.bot.send_document(
                 chat_id=post.group_id,
-                animation=Animation(file_id=post.gif),
+                document=post.doc,
                 caption=post.text,
             )
         else:

@@ -257,7 +257,7 @@ async def delete_currency_listing_countdown_post(
             posts = s.query(models.CurrencyListingCountdownPost).all()
             if not posts:
                 await update.callback_query.answer(
-                    text="لا يوجد منشورات",
+                    text="لا يوجد منشورات ❗️",
                     show_alert=True,
                 )
                 return ConversationHandler.END

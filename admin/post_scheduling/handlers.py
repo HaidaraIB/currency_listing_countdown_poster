@@ -6,7 +6,6 @@ from telegram import (
     KeyboardButton,
     KeyboardButtonRequestChat,
     ReplyKeyboardRemove,
-    Animation,
 )
 from telegram.ext import (
     ContextTypes,
@@ -82,11 +81,9 @@ async def get_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["post_scheduling_message_text"] = (
                 update.message.caption_html
             )
-            context.user_data["post_scheduling_message_gif"] = None
-        elif (
-            update.message.document and update.message.document.mime_type == "image/gif"
-        ):
-            context.user_data["post_scheduling_message_gif"] = (
+            context.user_data["post_scheduling_message_doc"] = None
+        elif update.message.document:
+            context.user_data["post_scheduling_message_doc"] = (
                 update.message.document.file_id
             )
             context.user_data["post_scheduling_message_text"] = (
@@ -94,7 +91,7 @@ async def get_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             context.user_data["post_scheduling_message_photo"] = None
         elif update.message.text != "/back":
-            context.user_data["post_scheduling_message_gif"] = None
+            context.user_data["post_scheduling_message_doc"] = None
             context.user_data["post_scheduling_message_photo"] = None
             context.user_data["post_scheduling_message_text"] = update.message.text_html
         await update.message.reply_text(
@@ -172,26 +169,24 @@ async def get_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         with models.session_scope() as s:
             photo_file_id = None
-            gif_file_id = None
+            doc_file_id = None
             if context.user_data["post_scheduling_message_photo"]:
                 photo_message = await context.bot.send_photo(
                     chat_id=Config.LOGOS_CHANNEL,
                     photo=context.user_data["post_scheduling_message_photo"],
                 )
                 photo_file_id = photo_message.photo[-1].file_id
-            elif context.user_data["post_scheduling_message_gif"]:
-                gif_message = await context.bot.send_animation(
+            elif context.user_data["post_scheduling_message_doc"]:
+                doc_message = await context.bot.send_document(
                     chat_id=Config.LOGOS_CHANNEL,
-                    animation=Animation(
-                        file_id=context.user_data["post_scheduling_message_gif"]
-                    ),
+                    document=context.user_data["post_scheduling_message_doc"],
                     caption=context.user_data["post_scheduling_message_text"],
                 )
-                gif_file_id = gif_message.animation.file_id
+                doc_file_id = doc_message.document.file_id
             post = models.SchedulingPost(
                 text=context.user_data["post_scheduling_message_text"],
                 photo=photo_file_id,
-                gif=gif_file_id,
+                doc=doc_file_id,
                 interval=context.user_data["post_scheduling_interval"],
                 group_id=group_id,
                 group_title=group_title,
@@ -232,7 +227,11 @@ add_post_scheduling_handler = ConversationHandler(
     states={
         MESSAGE: [
             MessageHandler(
-                filters=(filters.TEXT & ~filters.COMMAND) | filters.PHOTO,
+                filters=(
+                    (filters.TEXT & ~filters.COMMAND)
+                    | filters.PHOTO
+                    | filters.Document.ALL
+                ),
                 callback=get_message,
             )
         ],
@@ -268,7 +267,7 @@ async def delete_post_scheduling(update: Update, context: ContextTypes.DEFAULT_T
             posts = s.query(models.SchedulingPost).all()
             if not posts:
                 await update.callback_query.answer(
-                    text="لا يوجد منشورات مجدولة",
+                    text="لا يوجد منشورات مجدولة ❗️",
                     show_alert=True,
                 )
                 return ConversationHandler.END
@@ -341,7 +340,7 @@ async def edit_post_scheduling(update: Update, context: ContextTypes.DEFAULT_TYP
             posts = s.query(models.SchedulingPost).all()
             if not posts:
                 await update.callback_query.answer(
-                    text="لا يوجد منشورات مجدولة",
+                    text="لا يوجد منشورات مجدولة ❗️",
                     show_alert=True,
                 )
                 return ConversationHandler.END
@@ -486,23 +485,20 @@ async def get_new_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         photo=update.message.photo[-1].file_id,
                     )
                     post.photo = photo_message.photo[-1].file_id
-                    post.gif = None
+                    post.doc = None
                     post.text = update.message.caption_html
-                elif (
-                    update.message.document
-                    and update.message.document.mime_type == "image/gif"
-                ):
-                    gif_message = await context.bot.send_animation(
+                elif update.message.document:
+                    doc_message = await context.bot.send_document(
                         chat_id=Config.LOGOS_CHANNEL,
-                        animation=Animation(file_id=update.message.document.file_id),
+                        document=update.message.document.file_id,
                         caption=update.message.caption_html,
                     )
-                    post.gif = gif_message.animation.file_id
+                    post.doc = doc_message.document.file_id
                     post.photo = None
                     post.text = update.message.caption_html
                 elif update.message.text != "/back":
                     post.photo = None
-                    post.gif = None
+                    post.doc = None
                     post.text = update.message.text_html
             elif field_to_edit == "edit_interval":
                 new_interval = int(update.message.text) * 60
@@ -589,7 +585,7 @@ edit_post_scheduling_handler = ConversationHandler(
                     | (
                         (filters.TEXT & ~filters.COMMAND)
                         | filters.PHOTO
-                        | filters.Document.GIF
+                        | filters.Document.ALL
                     )
                     | filters.Regex(r"^[0-9]+$")
                 ),
