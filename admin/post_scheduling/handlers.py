@@ -6,6 +6,7 @@ from telegram import (
     KeyboardButton,
     KeyboardButtonRequestChat,
     ReplyKeyboardRemove,
+    Animation,
 )
 from telegram.ext import (
     ContextTypes,
@@ -81,7 +82,19 @@ async def get_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["post_scheduling_message_text"] = (
                 update.message.caption_html
             )
+            context.user_data["post_scheduling_message_gif"] = None
+        elif (
+            update.message.document and update.message.document.mime_type == "image/gif"
+        ):
+            context.user_data["post_scheduling_message_gif"] = (
+                update.message.document.file_id
+            )
+            context.user_data["post_scheduling_message_text"] = (
+                update.message.caption_html
+            )
+            context.user_data["post_scheduling_message_photo"] = None
         elif update.message.text != "/back":
+            context.user_data["post_scheduling_message_gif"] = None
             context.user_data["post_scheduling_message_photo"] = None
             context.user_data["post_scheduling_message_text"] = update.message.text_html
         await update.message.reply_text(
@@ -159,15 +172,26 @@ async def get_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         with models.session_scope() as s:
             photo_file_id = None
+            gif_file_id = None
             if context.user_data["post_scheduling_message_photo"]:
                 photo_message = await context.bot.send_photo(
                     chat_id=Config.LOGOS_CHANNEL,
                     photo=context.user_data["post_scheduling_message_photo"],
                 )
                 photo_file_id = photo_message.photo[-1].file_id
+            elif context.user_data["post_scheduling_message_gif"]:
+                gif_message = await context.bot.send_animation(
+                    chat_id=Config.LOGOS_CHANNEL,
+                    animation=Animation(
+                        file_id=context.user_data["post_scheduling_message_gif"]
+                    ),
+                    caption=context.user_data["post_scheduling_message_text"],
+                )
+                gif_file_id = gif_message.animation.file_id
             post = models.SchedulingPost(
                 text=context.user_data["post_scheduling_message_text"],
                 photo=photo_file_id,
+                gif=gif_file_id,
                 interval=context.user_data["post_scheduling_interval"],
                 group_id=group_id,
                 group_title=group_title,
@@ -457,10 +481,28 @@ async def get_new_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
             post = s.get(models.SchedulingPost, post_id)
             if field_to_edit == "edit_message":
                 if update.message.photo:
-                    post.photo = update.message.photo[-1].file_id
+                    photo_message = await context.bot.send_photo(
+                        chat_id=Config.LOGOS_CHANNEL,
+                        photo=update.message.photo[-1].file_id,
+                    )
+                    post.photo = photo_message.photo[-1].file_id
+                    post.gif = None
+                    post.text = update.message.caption_html
+                elif (
+                    update.message.document
+                    and update.message.document.mime_type == "image/gif"
+                ):
+                    gif_message = await context.bot.send_animation(
+                        chat_id=Config.LOGOS_CHANNEL,
+                        animation=Animation(file_id=update.message.document.file_id),
+                        caption=update.message.caption_html,
+                    )
+                    post.gif = gif_message.animation.file_id
+                    post.photo = None
                     post.text = update.message.caption_html
                 elif update.message.text != "/back":
                     post.photo = None
+                    post.gif = None
                     post.text = update.message.text_html
             elif field_to_edit == "edit_interval":
                 new_interval = int(update.message.text) * 60

@@ -34,4 +34,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    pass
+    try:
+        with op.batch_alter_table("scheduling_posts") as batch_op:
+            batch_op.drop_column("is_paused")
+    except:
+        pass

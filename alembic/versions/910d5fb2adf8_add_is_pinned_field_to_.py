@@ -34,4 +34,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    pass
+    try:
+        with op.batch_alter_table("currency_listing_countdown_posts") as batch_op:
+            batch_op.drop_column("is_pinned")
+    except:
+        pass
