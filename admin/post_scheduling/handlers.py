@@ -135,6 +135,7 @@ back_to_get_interval = get_message
 
 async def get_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == Chat.PRIVATE and Admin().filter(update):
+        group_title = None
         if update.message.chat_shared:
             group_id = update.message.chat_shared.chat_id
         else:
@@ -147,6 +148,7 @@ async def get_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "يجب أن يكون البوت مشرفًا في المجموعة/القناة المحددة. يرجى تعيين البوت كمسؤول ثم إعادة المحاولة."
                 )
                 return
+            group_title = chat.title
         except:
             await update.message.reply_text(
                 "تعذر التحقق من حالة البوت أو المجموعة/القناة. تأكد من أن البوت متواجد في المجموعة/القناة وأن الرقم صحيح."
@@ -154,15 +156,19 @@ async def get_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         with models.session_scope() as s:
-            photo_message = await context.bot.send_photo(
-                chat_id=Config.LOGOS_CHANNEL,
-                photo=context.user_data["post_scheduling_message_photo"],
-            )
+            photo_file_id = None
+            if context.user_data["post_scheduling_message_photo"]:
+                photo_message = await context.bot.send_photo(
+                    chat_id=Config.LOGOS_CHANNEL,
+                    photo=context.user_data["post_scheduling_message_photo"],
+                )
+                photo_file_id = photo_message.photo[-1].file_id
             post = models.SchedulingPost(
                 text=context.user_data["post_scheduling_message_text"],
-                photo=photo_message.photo[-1].file_id,
+                photo=photo_file_id,
                 interval=context.user_data["post_scheduling_interval"],
                 group_id=group_id,
+                group_title=group_title,
             )
             s.add(post)
             s.commit()
@@ -435,6 +441,7 @@ async def get_new_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     },
                 )
             elif field_to_edit == "edit_group":
+                new_group_title = None
                 if update.message.chat_shared:
                     new_group_id = update.message.chat_shared.chat_id
                 else:
@@ -447,20 +454,22 @@ async def get_new_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             "يجب أن يكون البوت مشرفًا في المجموعة/القناة المحددة. يرجى تعيين البوت كمسؤول ثم إعادة المحاولة."
                         )
                         return
+                    new_group_title = chat.title
                 except:
                     await update.message.reply_text(
                         "تعذر التحقق من حالة البوت أو المجموعة/القناة. تأكد من أن البوت متواجد في المجموعة/القناة وأن الرقم صحيح."
                     )
                     return
                 post.group_id = new_group_id
+                post.group_title = new_group_title
             post.updated_at = datetime.now()
             s.commit()
 
-        await update.callback_query.answer(
+        await update.message.reply_text(
             text="تم تعديل المنشور بنجاح ✅",
-            show_alert=True,
+            reply_markup=ReplyKeyboardRemove(),
         )
-        await update.callback_query.edit_message_text(
+        await update.message.reply_text(
             text=HOME_PAGE_TEXT,
             reply_markup=build_admin_keyboard(),
         )

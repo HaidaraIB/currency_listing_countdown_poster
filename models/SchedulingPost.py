@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from models.DB import Base
 from datetime import datetime
+from common.common import format_float, format_datetime
 
 
 class SchedulingPost(Base):
@@ -11,6 +12,7 @@ class SchedulingPost(Base):
     photo = sa.Column(sa.String)
     interval = sa.Column(sa.Integer)
     group_id = sa.Column(sa.Integer)
+    group_title = sa.Column(sa.String)
 
     created_at = sa.Column(sa.DateTime, default=datetime.now)
     updated_at = sa.Column(sa.DateTime, default=datetime.now)
@@ -19,8 +21,9 @@ class SchedulingPost(Base):
         return (
             "Post Scheduled:\n"
             f"Text: <b>{self.text}</b>\n"
-            f"Interval: <b>{self.interval} Minutes</b>\n"
+            f"Interval: <b>{format_float(self.interval / 60)} Minutes</b>\n"
+            f"Group Title: <b>{self.group_title}</b>\n"
             f"Group ID: <code>{self.group_id}</code>\n"
-            f"Created At: <i>{self.created_at}</i>\n"
-            f"Updated At: <i>{self.updated_at}</i>\n"
+            f"Created At: <i>{format_datetime(self.created_at)}</i>\n"
+            f"Updated At: <i>{format_datetime(self.updated_at)}</i>\n"
         )

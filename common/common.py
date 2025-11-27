@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes
 from common.keyboards import build_request_buttons
 import os
 import uuid
+from datetime import datetime
 
 
 def check_hidden_keyboard(context: ContextTypes.DEFAULT_TYPE):
@@ -24,3 +25,11 @@ def uuid_generator():
 
 def create_folders():
     os.makedirs("data", exist_ok=True)
+
+
+def format_datetime(d: datetime):
+    return d.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def format_float(f: float):
+    return f"{float(f):,.2f}".rstrip("0").rstrip(".")

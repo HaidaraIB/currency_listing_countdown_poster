@@ -29,13 +29,15 @@ def build_edit_post_scheduling_keyboard():
                 callback_data="edit_message",
             ),
             InlineKeyboardButton(
-                text="تعديل الفاصل الزمني",
-                callback_data="edit_interval",
-            ),
-            InlineKeyboardButton(
                 text="تعديل المجموعة",
                 callback_data="edit_group",
             ),
-        ]
+        ],
+        [
+            InlineKeyboardButton(
+                text="تعديل الفاصل الزمني",
+                callback_data="edit_interval",
+            ),
+        ],
     ]
     return keyboard
