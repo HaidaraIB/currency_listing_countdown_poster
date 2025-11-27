@@ -21,8 +21,14 @@ def build_post_scheduling_keyboard():
     return keyboard
 
 
-def build_edit_post_scheduling_keyboard():
+def build_edit_post_scheduling_keyboard(is_paused: bool):
     keyboard = [
+        [
+            InlineKeyboardButton(
+                text="تشغيل الجدولة" if is_paused else "إيقاف الجدولة",
+                callback_data="edit_scheduling",
+            )
+        ],
         [
             InlineKeyboardButton(
                 text="تعديل الرسالة",

@@ -78,10 +78,12 @@ async def get_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["post_scheduling_message_photo"] = update.message.photo[
                 -1
             ].file_id
-            context.user_data["post_scheduling_message_text"] = update.message.caption
+            context.user_data["post_scheduling_message_text"] = (
+                update.message.caption_html
+            )
         elif update.message.text != "/back":
             context.user_data["post_scheduling_message_photo"] = None
-            context.user_data["post_scheduling_message_text"] = update.message.text
+            context.user_data["post_scheduling_message_text"] = update.message.text_html
         await update.message.reply_text(
             text="أرسل الفاصل الزمني بالدقائق",
             reply_markup=InlineKeyboardMarkup(back_buttons),
@@ -338,11 +340,11 @@ async def choose_post_to_edit(update: Update, context: ContextTypes.DEFAULT_TYPE
         if not update.callback_query.data.startswith("back"):
             post_id = int(update.callback_query.data)
             context.user_data["post_to_edit_id"] = post_id
-        keyboard = build_edit_post_scheduling_keyboard()
-        keyboard.append(build_back_button("back_to_choose_post_to_edit"))
-        keyboard.append(build_back_to_home_page_button()[0])
         with models.session_scope() as s:
             post = s.get(models.SchedulingPost, post_id)
+            keyboard = build_edit_post_scheduling_keyboard(is_paused=post.is_paused)
+            keyboard.append(build_back_button("back_to_choose_post_to_edit"))
+            keyboard.append(build_back_to_home_page_button()[0])
             await update.callback_query.edit_message_text(
                 text=str(post) + f"\n\nاختر الحقل الذي تريد تعديله",
                 reply_markup=InlineKeyboardMarkup(keyboard),
@@ -365,7 +367,49 @@ async def choose_field_to_edit(update: Update, context: ContextTypes.DEFAULT_TYP
             context.user_data["field_to_edit"] = field_to_edit
         else:
             field_to_edit = context.user_data["field_to_edit"]
-        if field_to_edit == "edit_message":
+        if field_to_edit == "edit_scheduling":
+            post_id = context.user_data["post_to_edit_id"]
+            with models.session_scope() as s:
+                post = s.get(models.SchedulingPost, post_id)
+                if post.is_paused:
+                    context.job_queue.run_repeating(
+                        callback=post_scheduling_poster,
+                        interval=post.interval,
+                        name=f"post_scheduling_poster_{post.id}",
+                        user_id=update.effective_user.id,
+                        chat_id=update.effective_chat.id,
+                        data={"post_id": post.id},
+                        job_kwargs={
+                            "id": f"post_scheduling_poster_{post.id}",
+                            "replace_existing": True,
+                            "misfire_grace_time": None,
+                        },
+                    )
+                    post.is_paused = False
+                else:
+                    jobs = context.job_queue.get_jobs_by_name(
+                        f"post_scheduling_poster_{post.id}"
+                    )
+                    if jobs:
+                        for job in jobs:
+                            job.schedule_removal()
+                    post.is_paused = True
+                s.commit()
+                keyboard = build_edit_post_scheduling_keyboard(is_paused=post.is_paused)
+                keyboard.append(build_back_button("back_to_choose_post_to_edit"))
+                keyboard.append(build_back_to_home_page_button()[0])
+                await update.callback_query.answer(
+                    text="تم تعديل حالة الجدولة بنجاح ✅",
+                    show_alert=True,
+                )
+                await update.callback_query.edit_message_text(
+                    text=str(post) + f"\n\nاختر الحقل الذي تريد تعديله",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                )
+                return FIELD_TO_EDIT
+        elif field_to_edit == "edit_message":
+            text = "أرسل الرسالة الجديدة"
+        elif field_to_edit == "edit_scheduling":
             text = "أرسل الرسالة الجديدة"
         elif field_to_edit == "edit_interval":
             text = "أرسل الفاصل الزمني الجديد بالدقائق"
@@ -414,10 +458,10 @@ async def get_new_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if field_to_edit == "edit_message":
                 if update.message.photo:
                     post.photo = update.message.photo[-1].file_id
-                    post.text = update.message.caption
+                    post.text = update.message.caption_html
                 elif update.message.text != "/back":
                     post.photo = None
-                    post.text = update.message.text
+                    post.text = update.message.text_html
             elif field_to_edit == "edit_interval":
                 new_interval = int(update.message.text) * 60
                 post.interval = new_interval
@@ -493,14 +537,18 @@ edit_post_scheduling_handler = ConversationHandler(
         FIELD_TO_EDIT: [
             CallbackQueryHandler(
                 choose_field_to_edit,
-                r"^edit_((message)|(interval)|(group))$",
+                r"^edit_((message)|(interval)|(group)|(scheduling))$",
             )
         ],
         NEW_VALUE: [
             MessageHandler(
                 filters=(
                     (filters.StatusUpdate.CHAT_SHARED | filters.Regex(r"-?[0-9]+"))
-                    | ((filters.TEXT & ~filters.COMMAND) | filters.PHOTO)
+                    | (
+                        (filters.TEXT & ~filters.COMMAND)
+                        | filters.PHOTO
+                        | filters.Document.GIF
+                    )
                     | filters.Regex(r"^[0-9]+$")
                 ),
                 callback=get_new_value,
