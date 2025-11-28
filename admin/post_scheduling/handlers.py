@@ -273,7 +273,9 @@ async def delete_post_scheduling(update: Update, context: ContextTypes.DEFAULT_T
                 return ConversationHandler.END
             keyboard = build_keyboard(
                 columns=1,
-                texts=[post.text for post in posts],
+                texts=[
+                    (post.text if post.text else f"Post #{post.id}") for post in posts
+                ],
                 buttons_data=[post.id for post in posts],
             )
             keyboard.append(build_back_button("back_to_post_scheduling_settings"))
@@ -346,7 +348,9 @@ async def edit_post_scheduling(update: Update, context: ContextTypes.DEFAULT_TYP
                 return ConversationHandler.END
             keyboard = build_keyboard(
                 columns=1,
-                texts=[post.text for post in posts],
+                texts=[
+                    (post.text if post.text else f"Post #{post.id}") for post in posts
+                ],
                 buttons_data=[post.id for post in posts],
             )
             keyboard.append(build_back_button("back_to_post_scheduling_settings"))
