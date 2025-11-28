@@ -16,6 +16,12 @@ def build_post_scheduling_keyboard():
                 text="تعديل �",
                 callback_data="edit_post_scheduling",
             ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="عرض 👀",
+                callback_data="show_post_scheduling",
+            ),  
         ]
     ]
     return keyboard

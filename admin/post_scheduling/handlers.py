@@ -609,3 +609,88 @@ edit_post_scheduling_handler = ConversationHandler(
         ),
     ],
 )
+
+POST_TO_SHOW = range(1)
+
+
+async def show_post_scheduling(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type == Chat.PRIVATE and Admin().filter(update):
+        with models.session_scope() as s:
+            posts = s.query(models.SchedulingPost).all()
+            if not posts:
+                await update.callback_query.answer(
+                    text="لا يوجد منشورات مجدولة ❗️",
+                    show_alert=True,
+                )
+                return ConversationHandler.END
+            keyboard = build_keyboard(
+                columns=1,
+                texts=[
+                    (post.text if post.text else f"Post #{post.id}") for post in posts
+                ],
+                buttons_data=[post.id for post in posts],
+            )
+            keyboard.append(build_back_button("back_to_post_scheduling_settings"))
+            keyboard.append(build_back_to_home_page_button()[0])
+            await update.callback_query.edit_message_text(
+                text="اختر المنشور الذي تريد عرضه",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+            return POST_TO_SHOW
+
+
+async def choose_post_to_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type == Chat.PRIVATE and Admin().filter(update):
+        post_id = int(update.callback_query.data)
+        context.user_data["post_to_edit_id"] = post_id
+        with models.session_scope() as s:
+            post = s.get(models.SchedulingPost, post_id)
+            if post.photo:
+                await context.bot.send_photo(
+                    chat_id=update.effective_chat.id,
+                    photo=post.photo,
+                    caption=post.text,
+                )
+            elif post.doc:
+                await context.bot.send_document(
+                    chat_id=update.effective_chat.id,
+                    document=post.doc,
+                    caption=post.text,
+                )
+            else:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=post.text,
+                )
+        await update.callback_query.answer(
+            text="تم عرض المنشور بنجاح ✅",
+            show_alert=True,
+        )
+        await update.callback_query.edit_message_text(
+            text=HOME_PAGE_TEXT,
+            reply_markup=build_admin_keyboard(),
+        )
+        return ConversationHandler.END
+
+
+show_post_scheduling_handler = ConversationHandler(
+    entry_points=[
+        CallbackQueryHandler(
+            show_post_scheduling,
+            r"^show_post_scheduling$",
+        )
+    ],
+    states={
+        POST_TO_SHOW: [
+            CallbackQueryHandler(
+                choose_post_to_show,
+                r"^[0-9]+$",
+            )
+        ]
+    },
+    fallbacks=[
+        admin_command,
+        back_to_admin_home_page_handler,
+        post_scheduling_settings_handler,
+    ],
+)

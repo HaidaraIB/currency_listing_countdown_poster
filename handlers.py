@@ -32,6 +32,7 @@ def setup_and_run():
     app.add_handler(edit_post_scheduling_handler)
     app.add_handler(add_post_scheduling_handler)
     app.add_handler(delete_post_scheduling_handler)
+    app.add_handler(show_post_scheduling_handler)
     app.add_handler(post_scheduling_settings_handler)
 
     app.add_handler(add_currency_listing_countdown_post_handler)
